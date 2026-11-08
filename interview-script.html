@@ -1,0 +1,1528 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>면접 스크립트 카메라</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Do+Hyeon&family=Gothic+A1:wght@400;500;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+/* Layout: one-screen practice prompter. Phone portrait = question view on top (smaller), script prompter below (larger). Wide = view left, prompter right. The accent is a camera tally lamp: lit while a question is read and a script is written. */
+:root{
+  --bg:#eceff3; --surface:#ffffff; --sunk:#f4f6f9; --line:#d3d9e1;
+  --ink:#151b25; --muted:#5b6577; --finder:#0c1016;
+  --tally:#c4520f; --tally-soft:#fbeee4;
+  --mine:#2b7148; --mine-soft:#e4f2e9;
+  --focus:#2856b8; --focus-soft:#e6ecf9; --warn:#9a6410; --bad:#b8323a;
+  --f-display:"Do Hyeon","Gothic A1","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+  --f-body:"Gothic A1","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  --script-size:1.15rem;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1319; --surface:#161b23; --sunk:#1c222c; --line:#2a313d;
+    --ink:#e6eaf0; --muted:#97a1b0; --finder:#06080b;
+    --tally:#f08a45; --tally-soft:#3a2416;
+    --mine:#62c48a; --mine-soft:#15301f;
+    --focus:#86a8ff; --focus-soft:#1b2540; --warn:#e0a94f; --bad:#f07a80;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1319; --surface:#161b23; --sunk:#1c222c; --line:#2a313d;
+  --ink:#e6eaf0; --muted:#97a1b0; --finder:#06080b;
+  --tally:#f08a45; --tally-soft:#3a2416;
+  --mine:#62c48a; --mine-soft:#15301f;
+  --focus:#86a8ff; --focus-soft:#1b2540; --warn:#e0a94f; --bad:#f07a80;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0; height:100%}
+body{font:15px/1.55 var(--f-body); color:var(--ink); background:var(--bg); -webkit-font-smoothing:antialiased}
+button,input,textarea{font-family:inherit}
+button:focus-visible,input:focus-visible,textarea:focus-visible,summary:focus-visible{outline:2px solid var(--focus); outline-offset:2px}
+.vh{position:absolute!important; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap}
+
+/* ---------- frame ---------- */
+.app{
+  height:100%; max-width:1280px; margin:0 auto;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));
+  padding-right:max(16px, env(safe-area-inset-right, 0px));
+  padding-block:6px 12px;
+  display:grid; gap:10px;
+  grid-template-columns:minmax(0,1fr);
+  grid-template-rows:auto minmax(170px,.8fr) minmax(300px,1.45fr);
+}
+@media (orientation: landscape) and (min-width:560px){
+  .app{
+    grid-template-columns:minmax(0,1fr) minmax(300px,1.2fr);
+    grid-template-rows:auto minmax(0,1fr);
+    grid-template-areas:"finder bar" "finder answer";
+    padding-block:8px 10px;
+  }
+  .finder{grid-area:finder}
+  .bar{grid-area:bar}
+  .answer{grid-area:answer}
+}
+@media (orientation: landscape) and (min-width:900px){ .app{gap:14px; padding-block:12px 16px} }
+
+.bar{display:flex; align-items:center; gap:8px; min-height:40px; min-width:0}
+.bar h1{
+  margin:0; display:flex; align-items:center; gap:9px; min-width:0;
+  font:400 1.4rem/1 var(--f-display); letter-spacing:-.01em; white-space:nowrap;
+}
+.bar h1 span{overflow:hidden; text-overflow:ellipsis}
+.tally{width:10px; height:10px; border-radius:50%; flex:none; background:var(--line); transition:background .2s, box-shadow .2s}
+.tally[data-on="1"]{background:var(--tally); box-shadow:0 0 0 4px var(--tally-soft); animation:lamp 1.2s ease-in-out infinite}
+@keyframes lamp{50%{box-shadow:0 0 0 1px var(--tally-soft)}}
+.engine{
+  margin-left:auto; font-size:.74rem; font-weight:500; padding:3px 9px; border-radius:999px;
+  border:1px solid var(--line); background:var(--surface); color:var(--muted); white-space:nowrap;
+}
+.engine[data-state="ready"]{color:var(--mine); border-color:currentColor}
+.engine[data-state="need"]{color:var(--warn); border-color:currentColor}
+.engine[data-state="off"]{color:var(--bad); border-color:currentColor}
+.icon-btn{
+  display:inline-flex; align-items:center; gap:6px; height:36px; padding:0 12px; flex:none;
+  border:1px solid var(--line); background:var(--surface); color:var(--ink);
+  border-radius:10px; font:500 .86rem var(--f-body); cursor:pointer; white-space:nowrap;
+}
+.icon-btn svg{width:17px; height:17px}
+@media (max-width:440px){ .icon-btn .lbl{display:none} .icon-btn.gear{padding:0 9px} .engine{font-size:.7rem; padding:3px 7px} }
+
+/* ---------- question view ---------- */
+.finder{
+  position:relative; min-height:0; overflow:hidden; border-radius:14px;
+  background:var(--finder); color:#e8ecf2; cursor:pointer; touch-action:manipulation;
+}
+.finder.selecting{cursor:crosshair; touch-action:none}
+.finder.drop{outline:3px dashed var(--focus); outline-offset:-6px}
+.finder video,.finder .still{position:absolute; inset:0; width:100%; height:100%; max-width:100%; object-fit:cover}
+.finder video.contain,.finder .still{object-fit:contain}
+.finder-empty{position:absolute; inset:0; display:grid; place-content:center; gap:6px; text-align:center; padding:24px 24px 72px}
+.finder-empty strong{font-size:1rem; font-weight:500}
+.finder-empty span{font-size:.84rem; opacity:.65; max-width:32ch; margin:0 auto; word-break:keep-all}
+.roi{position:absolute; z-index:2; border:2px solid #f08a45; border-radius:6px; box-shadow:0 0 0 9999px rgba(6,8,11,.5); pointer-events:none}
+.roi.draft{border-style:dashed}
+.chip{
+  position:absolute; left:10px; top:10px; z-index:3;
+  display:inline-flex; align-items:center; gap:7px; max-width:calc(100% - 20px);
+  font-size:.78rem; font-weight:500; color:#fff;
+  background:rgba(10,12,16,.7); padding:5px 11px 5px 9px; border-radius:999px;
+  backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px);
+}
+.chip span{white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.chip i{width:8px; height:8px; border-radius:50%; background:#8b93a1; flex:none}
+.chip[data-s="watching"] i{background:#86a8ff}
+.chip[data-s="moving"] i{background:#e0a94f}
+.chip[data-s="solving"] i{background:#f08a45; animation:pulse 1s ease-in-out infinite}
+.chip[data-s="done"] i{background:#62c48a}
+@keyframes pulse{50%{opacity:.25}}
+.meter{
+  position:absolute; right:10px; top:44px; z-index:3; width:132px;
+  font:500 .68rem/1.3 var(--f-mono); color:#d9dee6; text-align:right;
+  background:rgba(10,12,16,.6); padding:5px 8px; border-radius:8px; font-variant-numeric:tabular-nums;
+}
+.meter b{display:block; position:relative; height:4px; margin-top:4px; background:rgba(255,255,255,.18); border-radius:2px}
+.meter s{position:absolute; left:0; top:0; bottom:0; width:0; background:#86a8ff; border-radius:2px; text-decoration:none}
+.meter u{position:absolute; top:-3px; bottom:-3px; width:2px; background:#f08a45; text-decoration:none}
+.ctrl{
+  position:absolute; left:10px; right:10px; bottom:10px; z-index:4;
+  display:flex; align-items:flex-end; justify-content:space-between; gap:8px; pointer-events:none;
+}
+.ctrl > *{pointer-events:auto}
+.roi-ctl{display:flex; gap:6px; flex-wrap:wrap; min-width:0}
+.pill{
+  height:34px; padding:0 12px; border:0; border-radius:999px; cursor:pointer; white-space:nowrap;
+  background:rgba(10,12,16,.62); color:#eef1f5; font:500 .8rem var(--f-body);
+  backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px);
+}
+.pill[aria-pressed="true"]{background:#fff; color:#11151b}
+.fabs{display:flex; gap:8px; margin-left:auto}
+.fab{
+  min-width:88px; height:50px; padding:0 18px; border:0; border-radius:999px; cursor:pointer;
+  background:#fff; color:#11151b; font:700 .98rem var(--f-body); box-shadow:0 4px 16px rgba(0,0,0,.35);
+}
+.fab.stop{background:#d9483f; color:#fff}
+.fab.ghost{min-width:0; background:rgba(10,12,16,.62); color:#fff; box-shadow:none; font-weight:500; backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px)}
+
+/* ---------- script prompter ---------- */
+.answer{
+  min-height:0; overflow:hidden; display:flex; flex-direction:column; gap:8px;
+  background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:10px 14px 12px;
+}
+.ask{display:flex; gap:8px; flex:none}
+.ask .text-in{flex:1; min-width:0}
+.ask .btn{flex:none}
+.ans-bar{display:flex; align-items:center; gap:6px; min-height:34px; min-width:0; flex:none}
+.nav{
+  width:32px; height:32px; flex:none; border-radius:8px; border:1px solid var(--line); cursor:pointer;
+  background:transparent; color:var(--ink); font-size:1.1rem; line-height:1;
+}
+.nav:disabled{opacity:.3; cursor:default}
+.meta{font:600 .78rem var(--f-mono); color:var(--muted); font-variant-numeric:tabular-nums; white-space:nowrap; flex:none}
+.badge{font-size:.72rem; font-weight:500; padding:2px 9px; border-radius:999px; border:1px solid var(--line); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; flex:0 1 auto}
+.badge.mine{color:var(--mine); background:var(--mine-soft); border-color:transparent}
+.badge.gen{color:var(--tally); background:var(--tally-soft); border-color:transparent}
+.badge.ex{color:var(--muted)}
+.lang{font:600 .7rem var(--f-mono); color:var(--focus); border:1px solid currentColor; border-radius:5px; padding:0 5px; flex:none}
+.dur{font:600 .78rem var(--f-mono); color:var(--muted); font-variant-numeric:tabular-nums; white-space:nowrap; flex:none}
+.grow{flex:1; min-width:0}
+.thumb{width:44px; height:30px; flex:none; object-fit:cover; border-radius:5px; border:1px solid var(--line); cursor:zoom-in; background:var(--finder)}
+.mini{
+  height:32px; padding:0 10px; flex:none; border-radius:8px; border:1px solid var(--line); cursor:pointer;
+  background:transparent; color:var(--ink); font:500 .8rem var(--f-body); white-space:nowrap;
+}
+.mini[aria-pressed="true"]{background:var(--ink); color:var(--surface); border-color:var(--ink)}
+.mini.danger{color:var(--bad)}
+.q{margin:0; flex:none; font-size:.9rem; font-weight:500; color:var(--muted); overflow-wrap:anywhere; word-break:keep-all; text-wrap:pretty}
+.keys{display:flex; flex-wrap:wrap; gap:6px; flex:none}
+.keys span{font-size:.78rem; padding:2px 10px; border-radius:999px; background:var(--sunk); border:1px solid var(--line); color:var(--ink)}
+.script-wrap{position:relative; flex:1; min-height:0; overflow:auto; border-top:1px solid var(--line); padding-top:12px}
+.script{
+  margin:0; white-space:pre-wrap; max-width:36em;
+  font:500 var(--script-size)/1.85 var(--f-body); color:var(--ink);
+  word-break:keep-all; overflow-wrap:anywhere;
+}
+.script.wait{font-size:.95rem; font-weight:400; color:var(--muted)}
+.script.covered{filter:blur(9px); user-select:none; -webkit-user-select:none; pointer-events:none}
+.reveal{
+  position:absolute; inset:12px 0 0; display:grid; place-content:center; gap:4px; text-align:center;
+  border:0; background:transparent; cursor:pointer; color:var(--ink); font:700 1rem var(--f-body);
+}
+.reveal small{font-weight:400; font-size:.82rem; color:var(--muted)}
+.err{margin:8px 0 0; color:var(--bad); font-size:.86rem}
+.ans-foot{display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end; flex:none}
+.ans-foot:empty{display:none}
+
+/* ---------- sheets ---------- */
+.sheet-back{position:fixed; inset:0; z-index:30; background:rgba(8,10,14,.5); display:flex; align-items:flex-end; justify-content:center}
+.sheet{
+  width:100%; max-width:560px; max-height:90%; display:grid; grid-template-rows:auto minmax(0,1fr);
+  background:var(--surface); color:var(--ink); border-radius:16px 16px 0 0; box-shadow:0 -8px 30px rgba(0,0,0,.25);
+  padding-bottom:env(safe-area-inset-bottom, 0px);
+}
+.sheet.wide{max-width:720px}
+@media (min-width:900px){ .sheet-back{align-items:center} .sheet{border-radius:16px; padding-bottom:0} }
+.sheet-head{
+  display:flex; align-items:center; justify-content:space-between; gap:10px; padding-block:14px 10px;
+  padding-left:max(16px, env(safe-area-inset-left, 0px)); padding-right:max(16px, env(safe-area-inset-right, 0px));
+  border-bottom:1px solid var(--line);
+}
+.sheet-head h2{margin:0; font:400 1.25rem/1.1 var(--f-display)}
+.sheet-body{
+  overflow:auto; display:grid; gap:18px; padding-block:14px 22px;
+  padding-left:max(16px, env(safe-area-inset-left, 0px)); padding-right:max(16px, env(safe-area-inset-right, 0px));
+}
+.group{display:grid; gap:10px; padding-bottom:18px; border-bottom:1px solid var(--line)}
+.group:last-child{border-bottom:0; padding-bottom:0}
+.group-head{display:flex; align-items:center; justify-content:space-between; gap:10px}
+.sec-title{margin:0; font:400 1.08rem/1.2 var(--f-display); letter-spacing:.01em}
+.two{display:grid; gap:10px; grid-template-columns:repeat(auto-fit, minmax(180px,1fr))}
+.field{display:grid; gap:6px; min-width:0}
+.field > span{font-size:.76rem; font-weight:500; color:var(--muted); letter-spacing:.04em}
+.modes{display:grid; grid-template-columns:repeat(3,1fr); gap:4px; padding:4px; background:var(--sunk); border:1px solid var(--line); border-radius:10px}
+.modes button{font:500 .86rem var(--f-body); color:var(--muted); background:transparent; border:0; padding:9px 4px; border-radius:7px; cursor:pointer}
+.modes button[aria-pressed="true"]{background:var(--focus-soft); color:var(--focus)}
+.note{margin:0; font-size:.84rem; color:var(--muted); word-break:keep-all}
+.note.warn{color:var(--warn)}
+.seg{display:flex; gap:6px; flex-wrap:wrap}
+.seg label{flex:1 1 70px; position:relative}
+.seg input{position:absolute; opacity:0}
+.seg label span{display:block; text-align:center; padding:8px 6px; border:1px solid var(--line); border-radius:8px; font-size:.86rem; cursor:pointer}
+.seg input:checked + span{border-color:var(--focus); color:var(--focus); background:var(--focus-soft)}
+.seg input:focus-visible + span{outline:2px solid var(--focus); outline-offset:2px}
+.range{display:flex; align-items:center; gap:10px; font-size:.78rem; color:var(--muted)}
+.range input{flex:1; accent-color:var(--focus)}
+.text-in{width:100%; font:400 .92rem/1.5 var(--f-body); color:var(--ink); background:var(--sunk); border:1px solid var(--line); border-radius:8px; padding:9px 11px}
+textarea.text-in{resize:vertical; line-height:1.7; word-break:keep-all}
+.mono{font-family:var(--f-mono); font-size:.85em}
+.hint{font-size:.78rem; color:var(--muted); margin:0; word-break:keep-all}
+.row-btns{display:flex; gap:8px; flex-wrap:wrap}
+.btn{
+  flex:1 1 120px; display:inline-flex; align-items:center; justify-content:center;
+  font:500 .9rem var(--f-body); padding:9px 14px; border-radius:10px; cursor:pointer;
+  border:1px solid var(--line); background:var(--surface); color:var(--ink);
+}
+.btn.primary{background:var(--ink); color:var(--surface); border-color:var(--ink)}
+.btn.danger{color:var(--bad)}
+.preset-list{display:grid; gap:10px}
+.preset{display:grid; gap:8px; padding:12px; border:1px solid var(--line); border-radius:12px; background:var(--surface)}
+.preset-head{display:flex; gap:8px; align-items:center}
+.preset-head .text-in{flex:1; min-width:0; font-weight:700}
+.preset .dur{min-width:4.5em; text-align:right}
+.perm{background:var(--sunk); border:1px solid var(--line); border-radius:10px}
+.perm[open]{border-color:var(--focus)}
+.perm summary{cursor:pointer; padding:10px 12px; font-weight:500; font-size:.9rem}
+.perm-body{display:grid; gap:12px; padding:2px 12px 12px}
+.perm-row{display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding-bottom:10px; border-bottom:1px solid var(--line)}
+.perm-row > div{flex:1 1 160px; min-width:0; display:grid; gap:2px}
+.perm-row b{font-size:.86rem; font-weight:500}
+.perm-row span{font-size:.82rem; color:var(--muted); overflow-wrap:anywhere}
+.perm-row span[data-s="ok"]{color:var(--mine)}
+.perm-row span[data-s="off"]{color:var(--bad)}
+.perm-row span[data-s="wait"]{color:var(--warn)}
+.perm-hint{margin:0; font-size:.86rem; line-height:1.6; background:var(--focus-soft); color:var(--ink); padding:10px 12px; border-radius:8px; white-space:pre-line}
+.perm-hint:empty{display:none}
+
+/* ---------- overlays ---------- */
+.viewer{position:fixed; inset:0; z-index:40; background:rgba(5,6,8,.92); display:grid; place-items:center; padding:24px; cursor:zoom-out}
+.viewer img{max-width:100%; max-height:100%; object-fit:contain; border-radius:8px}
+.toast{
+  position:fixed; left:50%; transform:translateX(-50%); z-index:50;
+  bottom:calc(16px + env(safe-area-inset-bottom, 0px));
+  max-width:min(92vw,460px); background:var(--ink); color:var(--surface);
+  font-size:.86rem; padding:10px 16px; border-radius:10px; box-shadow:0 6px 24px rgba(0,0,0,.25); word-break:keep-all;
+}
+@media (prefers-reduced-motion: reduce){ .chip[data-s="solving"] i,.tally[data-on="1"]{animation:none} .tally{transition:none} }
+</style>
+
+<div class="app">
+  <header class="bar">
+    <h1><i class="tally" id="tally" aria-hidden="true"></i><span>면접 스크립트</span></h1>
+    <span id="engine" class="engine" data-state="wait">연결 확인 중</span>
+    <button type="button" class="icon-btn" id="openPresets">내 답변</button>
+    <button type="button" class="icon-btn gear" id="openSheet" aria-label="설정 열기">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.6 1.6 0 0 0-1-1.5 1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.6 1.6 0 0 0 1.5-1 1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3h0a1.6 1.6 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 1 1.5h0a1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8v0a1.6 1.6 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"/></svg>
+      <span class="lbl">설정</span>
+    </button>
+  </header>
+
+  <section class="finder" id="finder" aria-label="질문 화면">
+    <video id="video" playsinline muted hidden></video>
+    <img id="still" class="still" alt="마지막으로 찍은 질문 화면" hidden>
+    <div class="finder-empty" id="finderEmpty">
+      <strong id="emptyTitle">질문 화면</strong>
+      <span id="emptySub"></span>
+    </div>
+    <div class="roi" id="roi" hidden></div>
+    <div class="chip" id="chip" data-s="idle"><i></i><span id="chipText">대기 중</span></div>
+    <div class="meter" id="meter" hidden><span id="meterText"></span><b><s id="meterBar"></s><u id="meterThr"></u></b></div>
+    <div class="ctrl">
+      <div class="roi-ctl" id="roiCtl" hidden>
+        <button type="button" class="pill" id="roiBtn" aria-pressed="false">질문 영역 지정</button>
+        <button type="button" class="pill" id="roiClear" hidden>전체 보기</button>
+      </div>
+      <div class="fabs">
+        <button type="button" class="fab ghost" id="albumBtn" hidden>앨범</button>
+        <button type="button" class="fab" id="fab">시작</button>
+      </div>
+    </div>
+    <input class="vh" id="shoot" type="file" accept="image/*" capture="environment" tabindex="-1" aria-hidden="true">
+    <input class="vh" id="pick" type="file" accept="image/*" tabindex="-1" aria-hidden="true">
+  </section>
+
+  <section class="answer" id="answer" aria-label="답변 스크립트" aria-live="polite">
+    <form class="ask" id="ask" hidden>
+      <input class="text-in" id="askIn" type="text" enterkeyhint="send" autocomplete="off" placeholder="질문을 직접 입력해도 돼요" aria-label="질문 직접 입력">
+      <button type="submit" class="btn primary" id="askBtn">스크립트</button>
+    </form>
+    <div class="ans-bar">
+      <button type="button" class="nav" id="prevBtn" aria-label="이전 질문">‹</button>
+      <span class="meta" id="ansMeta"></span>
+      <button type="button" class="nav" id="nextBtn" aria-label="다음 질문">›</button>
+      <span class="badge" id="ansBadge" hidden></span>
+      <span class="lang" id="ansLang" hidden>EN</span>
+      <span class="dur" id="ansDur"></span>
+      <span class="grow"></span>
+      <img class="thumb" id="ansThumb" alt="읽은 화면 크게 보기" hidden>
+      <button type="button" class="mini" id="coverBtn" aria-pressed="false">가리기</button>
+    </div>
+    <p class="q" id="ansQ"></p>
+    <div class="keys" id="ansKeys" hidden></div>
+    <div class="script-wrap" id="scriptWrap">
+      <p class="script" id="ansS"></p>
+      <button type="button" class="reveal" id="revealBtn" hidden>눌러서 스크립트 보기<small>먼저 소리 내어 답해 본 뒤 비교해 보세요</small></button>
+      <p class="err" id="ansErr" hidden></p>
+    </div>
+    <div class="ans-foot">
+      <button type="button" class="mini" id="stopBtn" hidden>중지</button>
+      <button type="button" class="mini" id="regenBtn" hidden>다시 생성</button>
+      <button type="button" class="mini" id="saveBtn" hidden>내 답변에 저장</button>
+      <button type="button" class="mini" id="copyBtn" hidden>복사</button>
+    </div>
+  </section>
+</div>
+
+<div class="sheet-back" id="sheet" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+    <div class="sheet-head"><h2 id="sheetTitle">설정</h2><button type="button" class="mini" id="closeSheet">닫기</button></div>
+    <div class="sheet-body">
+      <div class="field">
+        <span>입력 방식</span>
+        <div class="modes" id="modes">
+          <button type="button" data-mode="camera" aria-pressed="false">실시간 카메라</button>
+          <button type="button" data-mode="screen" aria-pressed="false">화면 공유</button>
+          <button type="button" data-mode="photo" aria-pressed="false">사진</button>
+        </div>
+        <p class="note" id="modeNote"></p>
+      </div>
+      <div class="field">
+        <span>답변 길이</span>
+        <div class="seg">
+          <label><input type="radio" name="len" id="len-30" value="30"><span>30초</span></label>
+          <label><input type="radio" name="len" id="len-60" value="60"><span>60초</span></label>
+          <label><input type="radio" name="len" id="len-90" value="90"><span>90초</span></label>
+        </div>
+        <p class="hint">새로 만드는 스크립트의 분량이에요. 말하는 속도 기준으로 어림한 시간이 스크립트 위에 같이 떠요.</p>
+      </div>
+      <div class="field">
+        <span>생성 속도</span>
+        <div class="seg">
+          <label><input type="radio" name="tier" id="tier-quick" value="quick"><span>빠름</span></label>
+          <label><input type="radio" name="tier" id="tier-default" value="default"><span>기본</span></label>
+          <label><input type="radio" name="tier" id="tier-complex" value="complex"><span>정밀</span></label>
+        </div>
+        <p class="hint">질문이 뜨자마자 봐야 하면 '빠름'이 좋아요. '기본'과 '정밀'은 몇 초 더 걸리는 대신 더 다듬어진 원고를 써요.</p>
+      </div>
+      <div class="field">
+        <span>스크립트 글자 크기</span>
+        <div class="seg">
+          <label><input type="radio" name="size" id="size-s" value="s"><span>작게</span></label>
+          <label><input type="radio" name="size" id="size-m" value="m"><span>보통</span></label>
+          <label><input type="radio" name="size" id="size-l" value="l"><span>크게</span></label>
+          <label><input type="radio" name="size" id="size-xl" value="xl"><span>아주 크게</span></label>
+        </div>
+      </div>
+      <div class="field" id="sensField">
+        <span>변화 감지 민감도</span>
+        <div class="range"><span>둔감</span><input type="range" id="sens" min="1" max="10" step="1" aria-label="변화 감지 민감도"><span>예민</span></div>
+        <p class="hint">질문이 바뀌었는데 안 읽으면 올리고, 같은 화면을 자꾸 다시 읽으면 내리세요. 내 얼굴 영상 때문이면 '질문 영역 지정'이 더 확실해요.</p>
+      </div>
+      <div class="field" id="keyField" hidden>
+        <span>Anthropic API 키</span>
+        <input class="text-in mono" id="apiKey" type="password" autocomplete="off" placeholder="sk-ant-...">
+        <div class="row-btns"><button type="button" class="btn" id="keyCheck">키 확인</button></div>
+        <p class="perm-hint" id="keyResult"></p>
+        <p class="hint">브라우저에서 HTML 파일로 열었을 때만 필요해요. 키는 이 브라우저에만 저장돼요. 발급: <span class="mono">platform.claude.com/settings/keys</span> (만들 때 Workspace 지정)</p>
+      </div>
+      <details class="perm" id="permPanel">
+        <summary>권한 점검</summary>
+        <div class="perm-body">
+          <div class="perm-row"><div><b>지금 열린 곳</b><span id="envText">확인 중</span></div></div>
+          <div class="perm-row">
+            <div><b>카메라 · 화면 공유</b><span id="camText">확인 전</span></div>
+            <button type="button" class="mini" id="camReq">카메라 권한 요청</button>
+          </div>
+          <div class="perm-row" id="claudeRow" hidden>
+            <div><b>Claude 사용 (스크립트 생성)</b><span id="claudeText">확인 전</span></div>
+            <button type="button" class="mini" id="claudeReq">허용하기</button>
+            <button type="button" class="mini" id="claudeManage" hidden>권한 설정 열기</button>
+          </div>
+          <p class="perm-hint" id="permHint"></p>
+        </div>
+      </details>
+      <div class="row-btns"><button type="button" class="btn danger" id="clearBtn">스크립트 기록 비우기</button></div>
+    </div>
+  </div>
+</div>
+
+<div class="sheet-back" id="presets" hidden>
+  <div class="sheet wide" role="dialog" aria-modal="true" aria-labelledby="presetsTitle">
+    <div class="sheet-head"><h2 id="presetsTitle">내 답변</h2><button type="button" class="mini" id="closePresets">닫기</button></div>
+    <div class="sheet-body">
+      <p class="note" id="storeNote"></p>
+      <section class="group">
+        <h3 class="sec-title">지원 정보</h3>
+        <p class="hint">새로 만드는 스크립트가 이 내용을 바탕으로 써져요. 지원하는 회사가 바뀌면 여기만 고치면 돼요.</p>
+        <div class="two">
+          <label class="field"><span>지원 회사</span><input class="text-in" id="pfCompany" type="text" placeholder="지원하는 회사 이름"></label>
+          <label class="field"><span>직무</span><input class="text-in" id="pfRole" type="text" placeholder="지원 직무"></label>
+        </div>
+        <label class="field"><span>인재상 · 회사 키워드</span><input class="text-in" id="pfValues" type="text" placeholder="채용 공고에 나온 인재상이나 핵심 가치"></label>
+        <label class="field"><span>내 경험 · 강점 메모</span><textarea class="text-in" id="pfMemo" rows="6" placeholder="스크립트에 쓸 경험을 짧게 적어 두세요. 프로젝트에서 맡은 역할과 결과, 수치로 말할 수 있는 성과, 경력, 자격증처럼요. 여기 없는 수치나 경험은 지어내지 않고 [ ]로 비워 둬요."></textarea></label>
+      </section>
+      <section class="group">
+        <div class="group-head"><h3 class="sec-title">미리 쓴 답변</h3><button type="button" class="mini" id="addPreset">+ 답변 추가</button></div>
+        <p class="hint">질문이 제목이나 키워드와 같은 것을 물으면 새로 만들지 않고 이 원고를 그대로 띄워요. 원고가 비어 있는 항목은 건너뛰어요.</p>
+        <div class="preset-list" id="presetList"></div>
+      </section>
+      <section class="group">
+        <h3 class="sec-title">다른 기기로 옮기기</h3>
+        <p class="hint">"전체 복사"로 복사한 내용을 다른 곳의 이 페이지 아래 칸에 붙여넣고 불러오기를 누르세요. 브라우저용 HTML 파일과 Claude 페이지 사이도 이렇게 옮겨요.</p>
+        <div class="row-btns"><button type="button" class="btn" id="exportBtn">전체 복사</button></div>
+        <textarea class="text-in" id="importIn" rows="3" placeholder="복사한 내용을 여기에 붙여넣기"></textarea>
+        <div class="row-btns"><button type="button" class="btn" id="importBtn">불러오기</button></div>
+      </section>
+    </div>
+  </div>
+</div>
+
+<div class="viewer" id="viewer" hidden><img id="viewerImg" alt="읽은 화면"></div>
+<div class="toast" id="toast" role="status" hidden></div>
+
+<script>
+(() => {
+  'use strict';
+  const ids = ['tally','engine','openPresets','openSheet','finder','video','still','finderEmpty','emptyTitle','emptySub','roi','chip','chipText',
+    'meter','meterText','meterBar','meterThr','roiCtl','roiBtn','roiClear','albumBtn','fab','shoot','pick',
+    'answer','ask','askIn','prevBtn','nextBtn','ansMeta','ansBadge','ansLang','ansDur','ansThumb','coverBtn','ansQ','ansKeys','scriptWrap','ansS','revealBtn','ansErr',
+    'stopBtn','regenBtn','saveBtn','copyBtn',
+    'sheet','closeSheet','modes','modeNote','sens','sensField','keyField','apiKey','keyCheck','keyResult',
+    'permPanel','envText','camText','camReq','claudeRow','claudeText','claudeReq','claudeManage','permHint','clearBtn',
+    'presets','closePresets','storeNote','pfCompany','pfRole','pfValues','pfMemo','presetList','addPreset','exportBtn','importIn','importBtn',
+    'viewer','viewerImg','toast'];
+  const el = {};
+  ids.forEach(id => { el[id] = document.getElementById(id); });
+
+  /* ---------- per-browser settings ---------- */
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem('iscr:' + k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
+    set(k, v) { try { localStorage.setItem('iscr:' + k, JSON.stringify(v)); } catch (e) {} }
+  };
+  const S = {
+    tier: store.get('tier', 'quick'), len: store.get('len', 60), size: store.get('size', 'm'),
+    sens: store.get('sens', 6), cover: store.get('cover', false), key: store.get('key', '')
+  };
+  function bindRadios(name, key, fallback, conv, after) {
+    let cur = document.getElementById(name + '-' + S[key]);
+    if (!cur) { S[key] = fallback; cur = document.getElementById(name + '-' + fallback); }
+    cur.checked = true;
+    document.querySelectorAll('input[name="' + name + '"]').forEach(r => r.addEventListener('change', () => {
+      if (!r.checked) return;
+      S[key] = conv(r.value); store.set(key, S[key]); if (after) after();
+    }));
+  }
+  const SIZES = { s: '1rem', m: '1.15rem', l: '1.35rem', xl: '1.6rem' };
+  const applySize = () => document.documentElement.style.setProperty('--script-size', SIZES[S.size] || SIZES.m);
+  bindRadios('tier', 'tier', 'quick', String);
+  bindRadios('len', 'len', 60, Number);
+  bindRadios('size', 'size', 'm', String, applySize);
+  applySize();
+  el.sens.value = S.sens;
+  el.sens.addEventListener('input', () => { S.sens = +el.sens.value; store.set('sens', S.sens); });
+  el.apiKey.value = S.key;
+  // Strip spaces, line breaks and invisible characters that sneak in when copying on a phone.
+  const cleanKey = (k) => String(k || '').replace(/[\s​-‍⁠﻿]/g, '');
+  const saveKey = () => { S.key = cleanKey(el.apiKey.value); store.set('key', S.key); renderEngine(); };
+  el.apiKey.addEventListener('input', saveKey);
+  el.apiKey.addEventListener('change', saveKey);
+
+  let toastTimer = 0;
+  function toast(msg) {
+    el.toast.textContent = msg; el.toast.hidden = false;
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => { el.toast.hidden = true; }, 3600);
+  }
+  function copyText(text, node, okMsg) {
+    const fallback = () => {
+      try {
+        if (node.select) node.select();
+        else { const r = document.createRange(); r.selectNodeContents(node); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); }
+      } catch (e) {}
+      toast('글자를 선택해 뒀어요. 길게 눌러 복사하세요.');
+    };
+    try { navigator.clipboard.writeText(text).then(() => toast(okMsg), fallback); } catch (e) { fallback(); }
+  }
+
+  /* ---------- my answers (presets) + applicant info ---------- */
+  const newId = () => Math.random().toString(36).slice(2, 9);
+  const str = (v, max) => String(v == null ? '' : v).slice(0, max);
+  function defaults() {
+    return { v: 1, updatedAt: 0, profile: { company: '', role: '', values: '', memo: '' }, presets: [
+      { id: 'intro', title: '1분 자기소개', keys: '자기소개, 본인 소개, 간단히 소개, introduce yourself, tell me about yourself', answer: '' },
+      { id: 'motive', title: '지원동기', keys: '지원 동기, 지원한 이유, 왜 우리 회사, 이 직무를 고른 이유, why do you want to join, why our company', answer: '' },
+      { id: 'goal', title: '입사 후 포부', keys: '입사 후 포부, 입사 후 계획, 5년 후, 10년 후, future goals, where do you see yourself', answer: '' },
+      { id: 'pros', title: '성격의 장단점', keys: '장단점, 성격의 장점, 성격의 단점, 강점과 약점, strengths and weaknesses', answer: '' },
+      { id: 'last', title: '마지막 한마디', keys: '마지막으로 하고 싶은 말, 마지막 한마디, anything else to add', answer: '' }
+    ] };
+  }
+  function sanitize(r) {
+    const d = defaults();
+    if (!r || typeof r !== 'object') return d;
+    const pf = r.profile || {};
+    const out = { v: 1, updatedAt: +r.updatedAt || 0,
+      profile: { company: str(pf.company, 200), role: str(pf.role, 200), values: str(pf.values, 600), memo: str(pf.memo, 6000) },
+      presets: [] };
+    const list = Array.isArray(r.presets) ? r.presets : d.presets;
+    list.slice(0, 40).forEach(p => {
+      if (p && typeof p === 'object') out.presets.push({ id: str(p.id, 40) || newId(), title: str(p.title, 120), keys: str(p.keys, 600), answer: str(p.answer, 6000) });
+    });
+    return out;
+  }
+  let D = sanitize(store.get('data', null));
+  const readyPresets = () => D.presets.filter(p => p.answer.trim());
+
+  // Saved in the viewer's own private corner of the page's database when the page runs inside Claude; this browser otherwise.
+  let dbRef = null, dbTimer = 0, dbBusy = false, dbDirty = false;
+  function setStoreNote(kind) {
+    el.storeNote.textContent = kind === 'account'
+      ? '이 Claude 계정에 저장돼요. 폰과 PC에서 이 페이지를 열면 같은 내용이 보여요.'
+      : '이 브라우저에만 저장돼요. 다른 기기로 옮기려면 맨 아래 "전체 복사"를 쓰세요.';
+  }
+  setStoreNote('local');
+  function persist() { D.updatedAt = Date.now(); store.set('data', D); scheduleDb(); }
+  function scheduleDb() { if (!dbRef) return; clearTimeout(dbTimer); dbTimer = setTimeout(pushDb, 1200); }
+  async function pushDb() {
+    if (!dbRef) return;
+    if (dbBusy) { dbDirty = true; return; }
+    dbBusy = true;
+    try { await dbRef.set(JSON.parse(JSON.stringify(D))); setStoreNote('account'); }
+    catch (e) {
+      const c = e && e.code;
+      if (c === 'unavailable' || c === 'resource_exhausted') { setTimeout(scheduleDb, 3000 + Math.random() * 2000); }
+      else { dbRef = null; setStoreNote('local'); }
+    } finally {
+      dbBusy = false;
+      if (dbDirty) { dbDirty = false; scheduleDb(); }
+    }
+  }
+  async function initDb() {
+    if (!inClaude) return;
+    let db = null, user = null;
+    try { [db, user] = await Promise.all([window.claude.use('db'), window.claude.use('user')]); } catch (e) {}
+    if (!db || !user) return;
+    const uid = await user.id().catch(() => null);
+    if (!uid) return;
+    try {
+      const ref = db.doc('data/users/' + uid + '/interview');
+      const snap = await ref.get();
+      dbRef = ref;
+      setStoreNote('account');
+      if (snap.exists) {
+        const remote = sanitize(snap.data());
+        if (remote.updatedAt > D.updatedAt) { D = remote; store.set('data', D); if (!el.presets.hidden) renderPresetSheet(); }
+        else if (D.updatedAt > remote.updatedAt) scheduleDb();
+      } else if (D.updatedAt) scheduleDb();
+    } catch (e) { dbRef = null; setStoreNote('local'); }
+  }
+
+  const PF = [['pfCompany', 'company'], ['pfRole', 'role'], ['pfValues', 'values'], ['pfMemo', 'memo']];
+  PF.forEach(([id, k]) => el[id].addEventListener('input', () => { D.profile[k] = el[id].value; persist(); }));
+  function renderPresetSheet() {
+    PF.forEach(([id, k]) => { el[id].value = D.profile[k]; });
+    el.presetList.textContent = '';
+    D.presets.forEach(p => el.presetList.appendChild(presetCard(p)));
+    if (!D.presets.length) {
+      const em = document.createElement('p'); em.className = 'hint'; em.textContent = '아직 미리 쓴 답변이 없어요. "+ 답변 추가"를 누르세요.';
+      el.presetList.appendChild(em);
+    }
+  }
+  function presetCard(p) {
+    const box = document.createElement('div'); box.className = 'preset';
+    const head = document.createElement('div'); head.className = 'preset-head';
+    const t = document.createElement('input'); t.type = 'text'; t.className = 'text-in'; t.id = 'p-' + p.id + '-t';
+    t.value = p.title; t.placeholder = '제목 (예: 1분 자기소개)'; t.setAttribute('aria-label', '답변 제목');
+    const dur = document.createElement('span'); dur.className = 'dur';
+    const del = document.createElement('button'); del.type = 'button'; del.className = 'mini danger'; del.textContent = '삭제';
+    head.append(t, dur, del);
+    const k = document.createElement('input'); k.type = 'text'; k.className = 'text-in'; k.id = 'p-' + p.id + '-k';
+    k.value = p.keys; k.placeholder = '이런 질문에 띄우기 (쉼표로 구분): 자기소개, introduce yourself';
+    k.setAttribute('aria-label', '이 답변을 띄울 질문 키워드');
+    const a = document.createElement('textarea'); a.className = 'text-in'; a.id = 'p-' + p.id + '-a'; a.rows = 6;
+    a.value = p.answer; a.placeholder = '미리 써 둔 원고를 붙여넣으세요. 이 질문이 나오면 새로 만들지 않고 이 원고를 그대로 띄워요.';
+    a.setAttribute('aria-label', '답변 원고');
+    const showDur = () => { dur.textContent = p.answer.trim() ? '≈ ' + fmtSecs(estSecs(p.answer)) : '비어 있음'; };
+    showDur();
+    t.addEventListener('input', () => { p.title = t.value; persist(); });
+    k.addEventListener('input', () => { p.keys = k.value; persist(); });
+    a.addEventListener('input', () => { p.answer = a.value; showDur(); persist(); });
+    let armed = 0, armT = 0;
+    del.addEventListener('click', () => {
+      if (p.answer.trim() && Date.now() - armed > 3000) {
+        armed = Date.now(); del.textContent = '한 번 더 눌러 삭제';
+        clearTimeout(armT); armT = setTimeout(() => { del.textContent = '삭제'; }, 3000);
+        return;
+      }
+      D.presets = D.presets.filter(x => x !== p); persist(); renderPresetSheet(); toast('답변을 지웠어요');
+    });
+    box.append(head, k, a);
+    return box;
+  }
+  el.addPreset.addEventListener('click', () => {
+    const p = { id: newId(), title: '', keys: '', answer: '' };
+    D.presets.push(p); persist(); renderPresetSheet();
+    const t = document.getElementById('p-' + p.id + '-t');
+    if (t) { t.focus(); try { t.scrollIntoView({ block: 'center' }); } catch (e) {} }
+  });
+  el.exportBtn.addEventListener('click', () => {
+    const text = JSON.stringify({ profile: D.profile, presets: D.presets });
+    el.importIn.value = text;
+    copyText(text, el.importIn, '전체를 복사했어요. 다른 곳의 이 페이지에 붙여넣으세요.');
+  });
+  let importArmed = 0;
+  el.importBtn.addEventListener('click', () => {
+    let parsed;
+    try { parsed = JSON.parse(el.importIn.value.trim()); } catch (e) { toast('불러올 수 없는 내용이에요. "전체 복사"로 복사한 내용을 그대로 붙여넣어 주세요.'); return; }
+    if (!parsed || !Array.isArray(parsed.presets)) { toast('미리 쓴 답변이 들어 있지 않아요.'); return; }
+    if (Date.now() - importArmed > 4000) {
+      importArmed = Date.now(); el.importBtn.textContent = '지금 내용을 덮어써요 · 한 번 더 누르기';
+      setTimeout(() => { el.importBtn.textContent = '불러오기'; }, 4000);
+      return;
+    }
+    importArmed = 0; el.importBtn.textContent = '불러오기';
+    D = sanitize(parsed); persist(); renderPresetSheet(); el.importIn.value = '';
+    toast('불러왔어요. 미리 쓴 답변 ' + D.presets.length + '개');
+  });
+
+  /* ---------- speaking time ---------- */
+  function estSecs(t) {
+    const s = String(t || '');
+    const ko = (s.match(/[가-힣]/g) || []).length;
+    const en = (s.match(/[A-Za-z]+(?:'[A-Za-z]+)?/g) || []).length;
+    return Math.round(ko / 5 + en / 2.4);
+  }
+  const fmtSecs = (n) => Math.floor(n / 60) + ':' + String(n % 60).padStart(2, '0');
+  function isEnglish(t) {
+    const s = String(t || '');
+    const ko = (s.match(/[가-힣]/g) || []).length, en = (s.match(/[A-Za-z]/g) || []).length;
+    return en > 20 && en > ko * 2;
+  }
+
+  /* ---------- engine ---------- */
+  const inClaude = !!(window.claude && typeof window.claude.use === 'function');
+  let engine = 'checking', sample = null, canImages = false;
+  const API_MODELS = { quick: 'claude-haiku-5-5', default: 'claude-sonnet-5-5', complex: 'claude-opus-5-5' };
+
+  async function initEngine() {
+    if (!inClaude) { engine = 'api'; renderEngine(); return; }
+    try { sample = await window.claude.use('sample'); } catch (e) { sample = null; }
+    if (sample) { const lim = await sample.limits().catch(() => null); canImages = !!(lim && lim.images); }
+    engine = sample ? 'claude' : 'none';
+    renderEngine();
+    if (!el.sheet.hidden && el.permPanel.open) checkPerms();
+  }
+  function renderEngine() {
+    const e = el.engine;
+    el.keyField.hidden = engine !== 'api';
+    if (engine === 'checking') { e.dataset.state = 'wait'; e.textContent = '연결 확인 중'; }
+    else if (engine === 'claude') { e.dataset.state = 'ready'; e.textContent = 'Claude 연결됨'; }
+    else if (engine === 'api') { const ok = !!S.key; e.dataset.state = ok ? 'ready' : 'need'; e.textContent = ok ? 'API 키 연결' : 'API 키 필요'; }
+    else { e.dataset.state = 'off'; e.textContent = '생성 불가'; }
+  }
+
+  /* ---------- prompt ---------- */
+  const LEN = { 30: { ko: 150, en: 70 }, 60: { ko: 300, en: 140 }, 90: { ko: 450, en: 210 } };
+  function buildPrompt({ image, question, forceGen }) {
+    const L = LEN[S.len] || LEN[60];
+    const pf = D.profile;
+    const info = [['지원 회사', pf.company], ['직무', pf.role], ['인재상·회사 키워드', pf.values], ['경험·강점 메모', pf.memo]]
+      .filter(x => x[1].trim()).map(x => '- ' + x[0] + ': ' + x[1].trim()).join('\n');
+    const list = forceGen ? [] : readyPresets();
+    const out = ['당신은 한국 신입 공채 면접 코치입니다. 지원자는 잡다(JOBDA) 모의 AI면접으로 혼자 답변 연습을 하고 있고, 질문마다 소리 내어 연습할 답변 스크립트가 필요합니다.', ''];
+    if (image) out.push('첨부한 이미지는 모의 AI면접 화면을 찍거나 캡처한 것입니다. 화면에 나온 면접 질문을 읽으세요. 타이머, 버튼, 안내 문구, 진행 단계 표시, 사람 얼굴이 나오는 카메라 영상은 무시하세요. 비스듬하거나 흐려도 최대한 읽으세요.');
+    else out.push('면접 질문: ' + question);
+    out.push('', '지원자가 직접 적은 정보:', info || '- (없음)');
+    if (list.length) {
+      out.push('', '지원자가 미리 써 둔 답변 목록 (번호. 제목 / 이런 질문에 씀):');
+      list.forEach((p, i) => out.push((i + 1) + '. ' + (p.title.trim() || '제목 없음') + ' / ' + (p.keys.trim() || p.title.trim())));
+      out.push('질문이 이 목록 중 하나와 같은 것을 묻는다면 일치 줄에 그 번호를 쓰고 그 줄에서 바로 끝내세요. 주제가 비슷해도 묻는 내용이 다르면 없음입니다.');
+    }
+    out.push('', '스크립트 작성 원칙:',
+      '- 소리 내어 말할 원고입니다. 약 ' + S.len + '초 분량으로, 한국어면 공백 빼고 ' + L.ko + '자 안팎, 영어면 ' + L.en + '단어 안팎으로 쓰세요.',
+      '- 질문이 영어면 영어로, 한국어면 한국어로 답하세요.',
+      '- 첫 문장에서 질문에 바로 답하세요(두괄식).',
+      '- 경험을 묻는 질문은 상황, 맡은 일, 내가 한 행동, 결과 순서(STAR)로 말하되 "상황:" 같은 라벨은 붙이지 마세요.',
+      '- 지원 회사, 직무, 인재상이 적혀 있으면 끝에서 한 문장으로 자연스럽게 연결하세요.',
+      '- 상황을 주고 대처를 묻거나 특정 인물에게 말해 보라는 질문(롤플레이)은 그 상대에게 직접 말하는 말투로 쓰세요.',
+      '- 면접장에서 실제로 말하는 구어체로 쓰세요. "~습니다/~했습니다"를 기본으로 하되 문장 끝이 단조롭지 않게 하고, 열정, 시너지, 소통 능력, "~하는 인재" 같은 상투어와 과장, 같은 구조를 반복하는 나열은 피하세요.',
+      '- 메모에 없는 구체적 수치, 회사명, 수상 경력, 프로젝트명은 지어내지 마세요. 꼭 필요하면 [프로젝트명]처럼 대괄호로 비워 두세요. 메모에 맞는 경험이 있으면 그 경험을 쓰세요.',
+      '- 마크다운, 글머리 기호, 따옴표 없이 문단 1~3개로 쓰세요.',
+      '', '이 형식으로만 답하세요:',
+      '질문: (읽은 질문을 원래 언어 그대로 한 줄로)',
+      '일치: (목록 번호 또는 없음)',
+      '핵심: (말할 핵심 2~3개를 스크립트 언어로, 쉼표로 구분)',
+      '스크립트:',
+      '(원고)');
+    if (image) out.push('', '화면에 면접 질문이 없거나 읽을 수 없으면 다른 말 없이 "질문 없음"이라고만 쓰세요.');
+    return { text: out.join('\n'), list };
+  }
+
+  /* ---------- parsing ---------- */
+  function parse(raw, final) {
+    // Only the start is trimmed: a trailing line break is how a streamed line shows it is finished.
+    const s = String(raw || '').replace(/\r/g, '').replace(/\*\*/g, '').replace(/^\s+/, '');
+    if (/^["'“]?(질문\s*없음|no question)/i.test(s)) return { none: true };
+    const out = { q: '', qDone: false, match: null, matchDone: false, keys: '', script: '', hasScript: false };
+    // Korean labels as asked; English ones in case an English question pulls the labels into English too.
+    const re = /^[ \t]*(질문|일치|핵심|스크립트|question|match|key ?points|keywords|script)[ \t]*[:：]/gmi;
+    const LABEL = { question: '질문', match: '일치', keypoints: '핵심', 'key points': '핵심', keywords: '핵심', script: '스크립트' };
+    const marks = []; let m;
+    while ((m = re.exec(s))) marks.push({ k: LABEL[m[1].toLowerCase()] || m[1], i: m.index, end: m.index + m[0].length });
+    if (!marks.length) { if (final && s.trim()) { out.script = s.trim(); out.hasScript = true; } return out; }
+    marks.forEach((mk, idx) => {
+      const stop = idx + 1 < marks.length ? marks[idx + 1].i : s.length;
+      const val = s.slice(mk.end, stop).trim();
+      const closed = final || idx + 1 < marks.length || /\n/.test(s.slice(mk.end));
+      if (mk.k === '질문') { out.q = val.split('\n')[0].trim(); out.qDone = closed; }
+      else if (mk.k === '일치') { const n = val.match(/\d+/); out.matchDone = closed; out.match = n ? +n[0] : (closed ? 0 : null); }
+      else if (mk.k === '핵심') out.keys = val.split('\n')[0].trim();
+      else { out.script = val; out.hasScript = true; }
+    });
+    return out;
+  }
+  const norm = (t) => String(t || '').replace(/[\s.,:;!?()\[\]·\-–—'"“”‘’~]/g, '').toLowerCase();
+  function localMatch(q) {
+    const nq = norm(q);
+    for (const p of readyPresets()) {
+      const keys = (p.keys + ',' + p.title).split(/[,，]/).map(norm).filter(k => k.length >= 3);
+      if (keys.some(k => nq.includes(k))) return p;
+    }
+    return null;
+  }
+
+  /* ---------- API (browser file) ---------- */
+  async function blobToBase64(blob) {
+    const buf = new Uint8Array(await blob.arrayBuffer());
+    let s = ''; const CH = 0x8000;
+    for (let i = 0; i < buf.length; i += CH) s += String.fromCharCode.apply(null, buf.subarray(i, i + CH));
+    return btoa(s);
+  }
+  // The API takes the key as x-api-key or as a Bearer token; on 401 try the other form once.
+  let authMode = store.get('auth', 'x-api-key');
+  function apiFetch(path, opts, mode) {
+    const headers = Object.assign({ 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' }, opts.headers || {});
+    if (mode === 'bearer') headers['authorization'] = 'Bearer ' + S.key; else headers['x-api-key'] = S.key;
+    return fetch('https://api.anthropic.com' + path, Object.assign({}, opts, { headers }));
+  }
+  async function apiRequest(path, opts) {
+    const res = await apiFetch(path, opts, authMode);
+    if (res.status === 401) {
+      const other = authMode === 'bearer' ? 'x-api-key' : 'bearer';
+      const res2 = await apiFetch(path, opts, other).catch(() => null);
+      if (res2 && res2.status !== 401) { authMode = other; store.set('auth', other); return res2; }
+    }
+    return res;
+  }
+  function keyShapeProblem(k) {
+    if (!k) return '키가 비어 있어요.';
+    if (/[.…*]{3,}|…|\*/.test(k)) return '가려진 키(…, *)가 들어가 있어요. Console 목록에 보이는 건 일부만 보여주는 표시라서 쓸 수 없어요. 키를 새로 만들고, 만들 때 뜨는 전체 키를 바로 복사하세요.';
+    if (!/^sk-ant-/.test(k)) return 'sk-ant-로 시작하지 않아요. 키 이름이나 ID 같은 다른 값을 복사한 것 같아요.';
+    if (k.length < 90) return '길이가 ' + k.length + '자로 짧아요. 키 전체가 아니라 일부만 복사된 것 같아요.';
+    return '';
+  }
+  async function checkKey() {
+    const out = el.keyResult;
+    saveKey();
+    const k = S.key;
+    const shown = k ? k.slice(0, 14) + '…' + k.slice(-4) + ' (' + k.length + '자)' : '없음';
+    const shape = keyShapeProblem(k);
+    out.textContent = '입력된 키: ' + shown + (shape ? '\n✗ ' + shape : '\n확인 중…');
+    if (!k) return;
+    try {
+      const res = await apiRequest('/v1/models?limit=1', { method: 'GET' });
+      const j = await res.json().catch(() => null);
+      const m = (j && j.error && j.error.message) || res.statusText || '';
+      let verdict;
+      if (res.ok) verdict = '✓ 키가 정상이에요. 이제 스크립트를 만들 수 있어요.';
+      else if (res.status === 401) verdict = '✗ 401: 서버가 이 키를 거절했어요 (' + m + '). 키를 지웠거나 만료됐거나 잘못 복사된 경우예요. Console에서 키를 새로 만들어 전체를 다시 붙여넣으세요.';
+      else if (res.status === 400 && /workspace/i.test(m)) verdict = '✗ 워크스페이스가 지정되지 않은 키예요. 키를 새로 만들 때 Workspace를 골라 주세요.';
+      else if (res.status === 402 || res.status === 403) verdict = '✗ ' + res.status + ': ' + m + ' · 결제(크레딧)나 권한을 확인하세요.';
+      else verdict = '✗ ' + res.status + ': ' + m;
+      out.textContent = '입력된 키: ' + shown + '\n' + verdict + (shape && !res.ok ? '\n참고: ' + shape : '');
+    } catch (e) {
+      out.textContent = '입력된 키: ' + shown + '\n✗ 서버에 닿지 못했어요. 인터넷 연결을 확인해 주세요.';
+    }
+  }
+  el.keyCheck.addEventListener('click', checkKey);
+
+  // Streams the answer so the script starts showing while it is still being written.
+  async function callApi({ blob, prompt, signal, onText }) {
+    const content = [];
+    if (blob) content.push({ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: await blobToBase64(blob) } });
+    content.push({ type: 'text', text: prompt });
+    let res;
+    try {
+      res = await apiRequest('/v1/messages', {
+        method: 'POST', signal, headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ model: API_MODELS[S.tier] || API_MODELS.quick, max_tokens: 1600, stream: true, messages: [{ role: 'user', content }] })
+      });
+    } catch (e) {
+      if (e && e.name === 'AbortError') throw { code: 'cancelled' };
+      throw { code: 'network' };
+    }
+    if (!res.ok) {
+      const j = await res.json().catch(() => null);
+      throw { code: 'api_' + res.status, message: j && j.error && j.error.message };
+    }
+    let text = '';
+    if (!res.body || !res.body.getReader) {
+      const raw = await res.text();
+      raw.split('\n').forEach(line => {
+        if (!line.startsWith('data:')) return;
+        try { const ev = JSON.parse(line.slice(5)); if (ev.type === 'content_block_delta' && ev.delta && ev.delta.type === 'text_delta') text += ev.delta.text; } catch (x) {}
+      });
+      if (text) onText(text);
+      return text.trim();
+    }
+    const reader = res.body.getReader(), dec = new TextDecoder();
+    let buf = '', streamErr = null;
+    try {
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += dec.decode(value, { stream: true });
+        let i;
+        while ((i = buf.indexOf('\n')) >= 0) {
+          const line = buf.slice(0, i).trim(); buf = buf.slice(i + 1);
+          if (!line.startsWith('data:')) continue;
+          let ev; try { ev = JSON.parse(line.slice(5)); } catch (x) { continue; }
+          if (ev.type === 'content_block_delta' && ev.delta && ev.delta.type === 'text_delta') { text += ev.delta.text; onText(text); }
+          else if (ev.type === 'error') streamErr = { code: 'api_stream', message: ev.error && ev.error.message };
+        }
+        if (streamErr) break;
+      }
+    } catch (e) {
+      if (e && e.name === 'AbortError') throw { code: 'cancelled', text };
+      throw { code: 'network', text };
+    }
+    if (streamErr) { streamErr.text = text; throw streamErr; }
+    return text.trim();
+  }
+
+  function errorText(e) {
+    const c = (e && e.code) || '';
+    if (c === 'not_granted') return 'Claude 사용이 허용되지 않았어요. 설정 → 권한 점검에서 "권한 설정 열기"를 눌러 켜 주세요.';
+    if (c === 'sampling_disabled') return '이 계정에서는 지금 Claude를 쓸 수 없는 상태예요.';
+    if (c === 'rate_limited' || c === 'api_429') return '요청이 많아 잠시 막혔어요. 조금 뒤에 다시 생성을 눌러 주세요.';
+    if (c === 'refused') return '이 화면으로는 스크립트를 만들 수 없었어요. 질문 부분만 보이게 다시 맞춰 주세요.';
+    if (c === 'image_rejected') return '사진을 읽지 못했어요. 다른 사진으로 다시 해 주세요.';
+    if (c === 'session_expired') return 'Claude 로그인이 만료됐어요. 다시 로그인해 주세요.';
+    if (c === 'api_401') return 'API 키를 서버가 거절했어요' + (e.message ? ' (' + e.message + ')' : '') + '. 설정의 "키 확인"을 눌러 원인을 보세요.';
+    if (c === 'api_400' && /workspace/i.test(e.message || '')) return '이 API 키는 워크스페이스가 지정되지 않았어요. 키를 새로 만들 때 Workspace를 골라 주세요.';
+    if (c === 'api_400') return '요청 형식 오류예요' + (e.message ? ': ' + e.message : '.');
+    if (c === 'api_402' || c === 'api_403') return 'API 결제나 권한 문제로 막혔어요. Console의 결제(Billing) 화면을 확인해 주세요.';
+    if (c === 'network') return '서버에 닿지 못했어요. 인터넷 연결을 확인해 주세요.';
+    if (/^api_5/.test(c) || c === 'api_stream') return 'Claude 서버가 바빠요. 잠시 후 다시 생성을 눌러 주세요.';
+    return '중간에 연결이 끊겼어요. 다시 생성을 눌러 주세요.';
+  }
+  const STOP_CODES = ['rate_limited', 'not_granted', 'sampling_disabled', 'session_expired', 'api_401', 'api_402', 'api_403', 'api_429'];
+
+  /* ---------- script history (newest first) ---------- */
+  const hist = [];
+  let viewIdx = 0, runNo = 0;
+  const nowTime = () => { const d = new Date(); return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); };
+  function newEntry({ blob = null, question = '' }) {
+    const e = { n: ++runNo, time: nowTime(), blob, url: blob ? URL.createObjectURL(blob) : null, typed: question,
+      status: blob ? 'reading' : 'writing', src: 'gen', presetTitle: '', q: question, keys: '', script: '', err: '', ctl: null, revealed: false, saved: false };
+    hist.unshift(e);
+    while (hist.length > 40) { const old = hist.pop(); if (old.url) URL.revokeObjectURL(old.url); }
+    viewIdx = 0; render();
+    return e;
+  }
+  function removeEntry(e) {
+    const i = hist.indexOf(e);
+    if (i >= 0) { hist.splice(i, 1); if (e.url) URL.revokeObjectURL(e.url); }
+    if (e.n && e.n === runNo) runNo--;
+    viewIdx = Math.min(viewIdx, Math.max(0, hist.length - 1));
+    render();
+  }
+  function update(e) { if (hist[viewIdx] === e) render(); }
+
+  function render() {
+    const e = hist[viewIdx];
+    el.prevBtn.hidden = el.nextBtn.hidden = hist.length < 2;
+    el.prevBtn.disabled = viewIdx >= hist.length - 1;
+    el.nextBtn.disabled = viewIdx <= 0;
+    el.coverBtn.setAttribute('aria-pressed', String(!!S.cover));
+    if (!e) {
+      el.ansMeta.textContent = ''; el.ansBadge.hidden = true; el.ansLang.hidden = true; el.ansDur.textContent = '';
+      el.ansQ.textContent = ''; el.ansKeys.textContent = ''; el.ansKeys.hidden = true;
+      el.ansS.className = 'script wait'; el.ansS.textContent = '질문이 들어오면 여기에 답변 스크립트가 떠요.';
+      el.revealBtn.hidden = true; el.ansErr.hidden = true;
+      el.stopBtn.hidden = el.regenBtn.hidden = el.saveBtn.hidden = el.copyBtn.hidden = el.ansThumb.hidden = true;
+      return;
+    }
+    const busyE = e.status === 'reading' || e.status === 'writing';
+    el.ansMeta.textContent = e.example ? '' : '#' + e.n + ' · ' + e.time;
+    let badge = null;
+    if (e.example) badge = ['ex', '예시'];
+    else if (e.src === 'mine') badge = ['mine', '내 답변 · ' + (e.presetTitle || '제목 없음')];
+    else if (e.script) badge = ['gen', '생성'];
+    el.ansBadge.hidden = !badge;
+    if (badge) { el.ansBadge.className = 'badge ' + badge[0]; el.ansBadge.textContent = badge[1]; el.ansBadge.title = badge[1]; }
+    el.ansLang.hidden = !(e.script && isEnglish(e.script));
+    el.ansDur.textContent = e.script ? '≈ ' + fmtSecs(estSecs(e.script)) : '';
+    el.ansQ.textContent = e.q ? 'Q. ' + e.q : (e.status === 'reading' ? '화면에서 질문을 읽는 중…' : '');
+    el.ansKeys.textContent = '';
+    const keys = (e.keys || '').split(/[,，]/).map(x => x.trim()).filter(Boolean).slice(0, 4);
+    keys.forEach(k => { const s = document.createElement('span'); s.textContent = k; el.ansKeys.appendChild(s); });
+    el.ansKeys.hidden = !keys.length;
+    if (e.script) { el.ansS.className = 'script'; el.ansS.textContent = e.script; }
+    else {
+      el.ansS.className = 'script wait';
+      el.ansS.textContent = ({
+        reading: '질문을 읽고 있어요…',
+        writing: '스크립트를 쓰는 중…',
+        none: '화면에서 질문을 찾지 못했어요. 질문 글자가 크게 보이게 맞춰 주세요.',
+        error: '스크립트를 만들지 못했어요.',
+        done: '스크립트를 받지 못했어요. 다시 생성을 눌러 주세요.'
+      })[e.status] || '';
+    }
+    const covered = !!S.cover && !e.revealed && !e.example && !!e.script;
+    el.ansS.classList.toggle('covered', covered);
+    el.revealBtn.hidden = !covered;
+    el.ansErr.textContent = e.err || ''; el.ansErr.hidden = !e.err;
+    el.stopBtn.hidden = !busyE || !e.ctl;
+    el.regenBtn.hidden = busyE || !!e.example || !(e.blob || e.typed);
+    el.regenBtn.textContent = e.src === 'mine' ? 'AI 스크립트 보기' : '다시 생성';
+    el.saveBtn.hidden = busyE || !!e.example || e.src !== 'gen' || !e.script || e.saved;
+    el.copyBtn.hidden = busyE || !e.script;
+    if (e.url) { el.ansThumb.src = e.url; el.ansThumb.hidden = false; } else el.ansThumb.hidden = true;
+  }
+
+  hist.push({ example: true, n: 0, status: 'done', src: 'gen', err: '', revealed: true,
+    q: '팀 프로젝트에서 의견이 맞지 않는 팀원과 어떻게 협업했는지 말씀해 주세요.',
+    keys: '끝까지 듣기, 근거로 비교, 기준부터 맞추기',
+    script: '의견이 갈릴 때는 상대가 왜 그렇게 생각하는지 끝까지 듣고, 결정은 근거로 하려고 합니다.\n\n[팀 프로젝트명]에서 부품 배치를 두고 팀원과 의견이 갈린 적이 있었습니다. 저는 무게중심을, 팀원은 정비하기 쉬운 배치를 더 중요하게 봤습니다. 둘 다 맞는 말이라서 두 안의 장단점을 한 장으로 정리해 같이 검토했고, 무게중심은 지키면서 정비 패널 위치만 옮기는 쪽으로 합의했습니다. 그 뒤로는 회의를 시작할 때 각자 판단 기준부터 먼저 말하기로 했고, 같은 일로 부딪히는 일이 확실히 줄었습니다.\n\n입사 후에도 동료와 생각이 다를 때 기준부터 맞추는 방식으로 일하겠습니다.' });
+  function clearExample() { const e = hist.find(x => x.example); if (e) removeEntry(e); }
+
+  const go = (d) => { const n = viewIdx + d; if (n >= 0 && n < hist.length) { viewIdx = n; render(); } };
+  el.prevBtn.addEventListener('click', () => go(1));
+  el.nextBtn.addEventListener('click', () => go(-1));
+  el.coverBtn.addEventListener('click', () => {
+    S.cover = !S.cover; store.set('cover', S.cover); render();
+    toast(S.cover ? '새 스크립트를 가려 둘게요. 먼저 말해 보고 눌러서 확인하세요.' : '스크립트를 바로 보여줄게요.');
+  });
+  el.revealBtn.addEventListener('click', () => { const e = hist[viewIdx]; if (e) { e.revealed = true; render(); } });
+  el.stopBtn.addEventListener('click', () => { const e = hist[viewIdx]; if (e && e.ctl) e.ctl.abort(); });
+  el.regenBtn.addEventListener('click', () => {
+    const e = hist[viewIdx]; if (!e || !(e.blob || e.typed)) return;
+    run({ blob: e.blob, question: e.typed, entry: e, fresh: true, forceGen: true });
+  });
+  el.saveBtn.addEventListener('click', () => {
+    const e = hist[viewIdx]; if (!e || !e.script) return;
+    const title = (e.q || '저장한 답변').slice(0, 60);
+    D.presets.push({ id: newId(), title, keys: e.q || '', answer: e.script });
+    persist(); e.saved = true; render();
+    toast('내 답변에 저장했어요. 원고는 "내 답변"에서 고칠 수 있어요.');
+  });
+  el.copyBtn.addEventListener('click', () => { const e = hist[viewIdx]; if (e && e.script) copyText(e.script, el.ansS, '스크립트를 복사했어요'); });
+  el.ansThumb.addEventListener('click', () => { el.viewerImg.src = el.ansThumb.src; el.viewer.hidden = false; });
+  el.viewer.addEventListener('click', () => { el.viewer.hidden = true; });
+
+  /* ---------- reading + writing ---------- */
+  let busy = false, lastCall = 0, lastQ = '';
+  function setChip(s, text) { el.chip.dataset.s = s; el.chipText.textContent = text; el.tally.dataset.on = s === 'solving' ? '1' : '0'; }
+  const idleChip = () => setChip(live ? 'watching' : 'idle', live ? '화면 보는 중' : '대기 중');
+  function canRun(blob, quiet) {
+    let msg = '';
+    if (engine === 'checking') msg = 'Claude 연결을 확인하는 중이에요. 잠시 후 다시 해 주세요.';
+    else if (engine === 'none') msg = '이 화면에서는 Claude를 쓸 수 없어요. claude.ai에 로그인한 상태로 열어 주세요.';
+    else if (engine === 'api' && !S.key) { openSheet({ key: true }); msg = '설정에 API 키를 먼저 넣어 주세요.'; }
+    else if (blob && engine === 'claude' && !canImages) msg = '이 화면에서는 사진을 보낼 수 없어요. 질문을 직접 입력해 주세요.';
+    if (msg && !quiet) toast(msg);
+    return !msg;
+  }
+  function useMine(e, p) { e.src = 'mine'; e.presetTitle = p.title.trim() || '제목 없음'; e.script = p.answer; e.keys = ''; }
+  function finishOk(e) {
+    e.status = 'done';
+    if (e.q) lastQ = norm(e.q);
+    setChip('done', live ? (e.src === 'mine' ? '내 답변 띄움 · 다음 질문을 기다려요' : '스크립트 나옴 · 다음 질문을 기다려요') : (e.src === 'mine' ? '내 답변 띄움' : '스크립트 나옴'));
+    try { navigator.vibrate && navigator.vibrate(50); } catch (x) {}
+  }
+
+  async function run({ blob = null, question = '', entry = null, fresh = false, auto = false, forceGen = false } = {}) {
+    if (!canRun(blob, auto)) { if (auto && live) idleChip(); return; }
+    if (busy) { if (!auto) toast('앞 질문을 처리하는 중이에요.'); return; }
+    busy = true; lastCall = Date.now();
+    setChip('solving', blob ? '질문 읽는 중…' : '스크립트 쓰는 중…');
+    clearExample();
+    const e = entry || newEntry({ blob, question });
+    if (entry) {
+      Object.assign(e, { status: blob ? 'reading' : 'writing', src: 'gen', presetTitle: '', q: e.typed || '', keys: '', script: '', err: '', revealed: false, saved: false });
+      viewIdx = Math.max(0, hist.indexOf(e));
+    }
+    const { text: prompt, list } = buildPrompt({ image: !!blob, question, forceGen });
+    const ctl = new AbortController(); e.ctl = ctl; update(e);
+    let decided = null;
+    const isDup = (q) => auto && !entry && !!lastQ && !!q && norm(q) === lastQ;
+    const handle = (t) => {
+      if (decided) return;
+      const p = parse(t, false);
+      if (p.none) return;
+      if (p.q) e.q = p.q;
+      if (p.qDone && isDup(p.q)) { decided = 'dup'; ctl.abort(); return; }
+      if (p.matchDone && p.match > 0 && list[p.match - 1]) { decided = 'match'; useMine(e, list[p.match - 1]); ctl.abort(); return; }
+      if (p.keys) e.keys = p.keys;
+      if (p.hasScript && p.script) { e.script = p.script; e.status = 'writing'; setChip('solving', '스크립트 쓰는 중…'); }
+      update(e);
+    };
+    let finalText = null, failure = null;
+    try {
+      if (engine === 'claude') {
+        const opts = { modelTier: S.tier, signal: ctl.signal, onText: ({ text }) => handle(text) };
+        if (blob) opts.images = blob;
+        if (fresh) opts.cache = false;
+        finalText = (await sample(prompt, opts)).text;
+      } else {
+        finalText = await callApi({ blob, prompt, signal: ctl.signal, onText: handle });
+      }
+    } catch (err) { failure = err || {}; }
+    try {
+      if (decided === 'dup') { removeEntry(e); setChip('done', '같은 질문이에요 · 다음 질문을 기다려요'); return; }
+      if (decided === 'match') { finishOk(e); return; }
+      if (failure) {
+        e.status = 'error';
+        if (failure.text) { const p = parse(failure.text, true); if (!p.none) { if (p.q) e.q = p.q; if (p.keys) e.keys = p.keys; if (p.script) e.script = p.script; } }
+        if (failure.code === 'cancelled') e.err = '중지했어요.';
+        else {
+          if (failure.code === 'refused') { e.script = ''; e.keys = ''; }
+          e.err = errorText(failure);
+          if (failure.code === 'not_granted') openSheet({ perm: true });
+          if (live && STOP_CODES.includes(failure.code)) { stopLive(); toast('자동 읽기를 멈췄어요. ' + errorText(failure)); }
+        }
+        idleChip();
+        return;
+      }
+      const p = parse(finalText, true);
+      if (p.none) {
+        if (auto && !entry) { removeEntry(e); setChip('watching', '질문이 안 보여요 · 화면을 맞춰 주세요'); }
+        else { e.status = 'none'; idleChip(); }
+        return;
+      }
+      if (isDup(p.q)) { removeEntry(e); setChip('done', '같은 질문이에요 · 다음 질문을 기다려요'); return; }
+      if (p.q) e.q = p.q;
+      if (p.match > 0 && list[p.match - 1]) { useMine(e, list[p.match - 1]); finishOk(e); return; }
+      e.keys = p.keys; e.script = p.script; e.src = 'gen';
+      finishOk(e);
+    } finally {
+      busy = false; e.ctl = null; update(e);
+    }
+  }
+
+  el.ask.addEventListener('submit', (ev) => {
+    ev.preventDefault();
+    const q = el.askIn.value.trim();
+    if (!q) return;
+    const pm = localMatch(q);
+    if (pm) {
+      clearExample();
+      const e = newEntry({ question: q });
+      useMine(e, pm); finishOk(e); update(e);
+      el.askIn.value = '';
+      return;
+    }
+    if (busy) { toast('앞 질문을 처리하는 중이에요.'); return; }
+    if (!canRun(null)) return;
+    el.askIn.value = '';
+    run({ question: q });
+  });
+
+  /* ---------- images ---------- */
+  const MAX_SIDE = 1600;
+  const full = document.createElement('canvas');
+  const canvasToBlob = (cv) => new Promise((res, rej) => cv.toBlob(b => b ? res(b) : rej(new Error('blob')), 'image/jpeg', 0.88));
+  function drawScaled(src, w, h) {
+    const k = Math.min(1, MAX_SIDE / Math.max(w, h));
+    full.width = Math.max(1, Math.round(w * k)); full.height = Math.max(1, Math.round(h * k));
+    full.getContext('2d').drawImage(src, 0, 0, full.width, full.height);
+    return canvasToBlob(full);
+  }
+  async function fileToJpeg(file) {
+    try {
+      const bmp = await createImageBitmap(file);
+      const b = await drawScaled(bmp, bmp.width, bmp.height); if (bmp.close) bmp.close(); return b;
+    } catch (e) {
+      const u = URL.createObjectURL(file);
+      try {
+        const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = u; });
+        return await drawScaled(img, img.naturalWidth, img.naturalHeight);
+      } finally { URL.revokeObjectURL(u); }
+    }
+  }
+  let stillUrl = null;
+  function showStill(blob) {
+    if (stillUrl) URL.revokeObjectURL(stillUrl);
+    stillUrl = URL.createObjectURL(blob); el.still.src = stillUrl;
+    renderFinderEmpty();
+  }
+  async function handleFile(file) {
+    if (!file || !/^image\//.test(file.type || 'image/')) { toast('이미지 파일만 읽을 수 있어요.'); return; }
+    if (!canRun(new Blob())) return;
+    let blob;
+    try { blob = await fileToJpeg(file); } catch (e) { toast('사진을 열지 못했어요. JPG나 PNG로 다시 해 주세요.'); return; }
+    showStill(blob);
+    run({ blob });
+  }
+  el.shoot.addEventListener('change', () => { const f = el.shoot.files[0]; el.shoot.value = ''; handleFile(f); });
+  el.pick.addEventListener('change', () => { const f = el.pick.files[0]; el.pick.value = ''; handleFile(f); });
+  document.addEventListener('paste', (ev) => {
+    const item = [...(ev.clipboardData ? ev.clipboardData.items : [])].find(i => i.type.startsWith('image/'));
+    if (item) { ev.preventDefault(); handleFile(item.getAsFile()); }
+  });
+  el.finder.addEventListener('dragover', (ev) => { ev.preventDefault(); el.finder.classList.add('drop'); });
+  el.finder.addEventListener('dragleave', () => el.finder.classList.remove('drop'));
+  el.finder.addEventListener('drop', (ev) => {
+    ev.preventDefault(); el.finder.classList.remove('drop');
+    const f = ev.dataTransfer && ev.dataTransfer.files[0]; if (f) handleFile(f);
+  });
+
+  /* ---------- which part of the frame gets read ---------- */
+  // Where the video sits inside the view (object-fit cover or contain), in view pixels.
+  function frameGeom() {
+    const v = el.video, vw = v.videoWidth, vh = v.videoHeight, cw = el.finder.clientWidth, ch = el.finder.clientHeight;
+    if (!vw || !vh || !cw || !ch) return null;
+    const contain = v.classList.contains('contain');
+    const s = contain ? Math.min(cw / vw, ch / vh) : Math.max(cw / vw, ch / vh);
+    const ox = (cw - vw * s) / 2, oy = (ch - vh * s) / 2;
+    const vis = { x: Math.max(0, -ox / s), y: Math.max(0, -oy / s), w: Math.min(vw, cw / s), h: Math.min(vh, ch / s) };
+    return { vw, vh, s, ox, oy, vis };
+  }
+  let roi = store.get('roi', {}) || {};
+  let selecting = false, drag = null, dragEndAt = 0;
+  // Source rectangle in video pixels: the chosen question area, or everything visible.
+  function srcRect() {
+    const g = frameGeom();
+    if (!g) return { x: 0, y: 0, w: el.video.videoWidth || 1, h: el.video.videoHeight || 1 };
+    const r = roi[mode];
+    if (!r) return g.vis;
+    let x = r.x * g.vw, y = r.y * g.vh;
+    const x2 = Math.min(x + r.w * g.vw, g.vis.x + g.vis.w), y2 = Math.min(y + r.h * g.vh, g.vis.y + g.vis.h);
+    x = Math.max(x, g.vis.x); y = Math.max(y, g.vis.y);
+    if (x2 - x < 8 || y2 - y < 8) return g.vis;
+    return { x, y, w: x2 - x, h: y2 - y };
+  }
+  const clamp01 = (n) => Math.max(0, Math.min(1, n));
+  function toNorm(ev) {
+    const g = frameGeom(); const b = el.finder.getBoundingClientRect();
+    return { x: clamp01((ev.clientX - b.left - g.ox) / (g.vw * g.s)), y: clamp01((ev.clientY - b.top - g.oy) / (g.vh * g.s)) };
+  }
+  function dragRect() {
+    const x = Math.min(drag.a.x, drag.b.x), y = Math.min(drag.a.y, drag.b.y);
+    return { x, y, w: Math.abs(drag.a.x - drag.b.x), h: Math.abs(drag.a.y - drag.b.y) };
+  }
+  function placeBox(r) {
+    const g = frameGeom();
+    if (!g || !r) { el.roi.hidden = true; return; }
+    el.roi.style.left = (g.ox + r.x * g.vw * g.s) + 'px';
+    el.roi.style.top = (g.oy + r.y * g.vh * g.s) + 'px';
+    el.roi.style.width = (r.w * g.vw * g.s) + 'px';
+    el.roi.style.height = (r.h * g.vh * g.s) + 'px';
+    el.roi.hidden = false;
+  }
+  function renderRoi() {
+    el.roiCtl.hidden = !live;
+    el.finder.classList.toggle('selecting', selecting);
+    el.roiBtn.setAttribute('aria-pressed', String(selecting));
+    el.roiBtn.textContent = selecting ? '취소' : (roi[mode] ? '영역 다시 지정' : '질문 영역 지정');
+    el.roiClear.hidden = selecting || !roi[mode];
+    el.roi.classList.toggle('draft', !!drag);
+    if (!live) { el.roi.hidden = true; return; }
+    placeBox(drag ? dragRect() : (selecting ? null : roi[mode] || null));
+  }
+  el.roiBtn.addEventListener('click', (ev) => {
+    ev.stopPropagation();
+    selecting = !selecting; drag = null;
+    if (selecting) setChip('watching', '질문 글자가 있는 부분을 끌어서 감싸 주세요');
+    else idleChip();
+    renderRoi();
+  });
+  el.roiClear.addEventListener('click', (ev) => {
+    ev.stopPropagation();
+    delete roi[mode]; store.set('roi', roi); prev = null; ref = null; stable = 0;
+    renderRoi(); toast('화면 전체를 보고 읽어요');
+  });
+  el.finder.addEventListener('pointerdown', (ev) => {
+    if (!live || !selecting || ev.target.closest('button')) return;
+    if (!frameGeom()) return;
+    ev.preventDefault();
+    try { el.finder.setPointerCapture(ev.pointerId); } catch (x) {}
+    const p = toNorm(ev); drag = { a: p, b: p, id: ev.pointerId }; renderRoi();
+  });
+  el.finder.addEventListener('pointermove', (ev) => {
+    if (!drag || ev.pointerId !== drag.id) return;
+    drag.b = toNorm(ev); renderRoi();
+  });
+  const endDrag = (ev) => {
+    if (!drag || ev.pointerId !== drag.id) return;
+    const r = dragRect(); drag = null; dragEndAt = Date.now();
+    if (ev.type === 'pointerup' && r.w > 0.05 && r.h > 0.03) {
+      roi[mode] = r; store.set('roi', roi); selecting = false;
+      prev = null; ref = null; stable = 0; lastQ = '';
+      setChip('watching', '이 영역만 보고 읽어요');
+    } else if (ev.type === 'pointerup') toast('조금 더 크게 끌어서 감싸 주세요.');
+    renderRoi();
+  };
+  el.finder.addEventListener('pointerup', endDrag);
+  el.finder.addEventListener('pointercancel', endDrag);
+  window.addEventListener('resize', renderRoi);
+  el.video.addEventListener('loadedmetadata', renderRoi);
+
+  async function grabFullBlob() {
+    const r = srcRect();
+    const k = Math.min(1, MAX_SIDE / Math.max(r.w, r.h));
+    full.width = Math.max(1, Math.round(r.w * k)); full.height = Math.max(1, Math.round(r.h * k));
+    full.getContext('2d').drawImage(el.video, r.x, r.y, r.w, r.h, 0, 0, full.width, full.height);
+    return canvasToBlob(full);
+  }
+
+  /* ---------- change detection ---------- */
+  const SW = 128, SH = 96, MOTION = 0.025, STABLE_TICKS = 3, TICK_MS = 400, MIN_GAP_MS = 2500;
+  const small = document.createElement('canvas'); small.width = SW; small.height = SH;
+  const sctx = small.getContext('2d', { willReadFrequently: true });
+  // Grayscale thumbnail of the read area, mean removed so auto-exposure shifts don't count as change.
+  function grabSmall() {
+    const r = srcRect();
+    sctx.drawImage(el.video, r.x, r.y, r.w, r.h, 0, 0, SW, SH);
+    const d = sctx.getImageData(0, 0, SW, SH).data;
+    const g = new Float32Array(SW * SH); let sum = 0;
+    for (let i = 0, j = 0; i < g.length; i++, j += 4) { const v = d[j] * 0.299 + d[j + 1] * 0.587 + d[j + 2] * 0.114; g[i] = v; sum += v; }
+    const m = sum / g.length;
+    for (let i = 0; i < g.length; i++) g[i] -= m;
+    return g;
+  }
+  function diff(a, b) { let s = 0; for (let i = 0; i < a.length; i++) s += Math.abs(a[i] - b[i]); return s / a.length / 255; }
+  const threshold = () => 0.012 + (10 - S.sens) * 0.006;
+
+  let live = false, stream = null, loopId = 0, prev = null, ref = null, stable = 0, wakeLock = null;
+  function showMeter(change, thr) {
+    el.meter.hidden = false;
+    const pct = (v) => (v * 100).toFixed(1);
+    el.meterText.textContent = change == null ? '기준 ' + pct(thr) + ' · 첫 화면' : '변화 ' + pct(change) + ' / 기준 ' + pct(thr);
+    const scale = Math.max(thr * 2, 0.02);
+    el.meterBar.style.width = Math.min(100, ((change || 0) / scale) * 100) + '%';
+    el.meterThr.style.left = Math.min(98, (thr / scale) * 100) + '%';
+  }
+  async function tick() {
+    if (!live || selecting || !el.video.videoWidth) return;
+    const cur = grabSmall();
+    if (!prev) { prev = cur; return; }
+    const motion = diff(cur, prev); prev = cur;
+    const thr = threshold();
+    const change = ref ? diff(cur, ref) : null;
+    showMeter(change, thr);
+    if (motion > MOTION) { stable = 0; if (!busy) setChip('moving', '화면이 움직여요 · 멈추면 읽어요'); return; }
+    stable++;
+    if (busy) return;
+    const isNew = ref === null || change > thr;
+    if (stable >= STABLE_TICKS && isNew && Date.now() - lastCall > MIN_GAP_MS) {
+      ref = cur;
+      let blob; try { blob = await grabFullBlob(); } catch (e) { return; }
+      run({ blob, auto: true });
+    } else if (el.chip.dataset.s !== 'done' || isNew) {
+      setChip('watching', ref ? '화면 보는 중 · 질문이 바뀌면 읽어요' : '화면 보는 중');
+    }
+  }
+
+  /* ---------- permission check ---------- */
+  let framed = false;
+  try { framed = window.self !== window.top; } catch (e) { framed = true; }
+  const isMobile = /Android|iPhone|iPad|Mobile/i.test(navigator.userAgent);
+  const hasCamApi = !!(window.isSecureContext && navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+  const hasScreenApi = !!(hasCamApi && navigator.mediaDevices.getDisplayMedia && !isMobile);
+  function envLabel() {
+    const p = location.protocol;
+    if (inClaude) return 'Claude 페이지 (claude.ai 안)';
+    if (framed) return '다른 앱이나 페이지 안의 미리보기 · 주소 형식 ' + p;
+    if (p === 'https:') return '브라우저 · https 주소';
+    if (p === 'file:') return '브라우저 · 기기에 저장된 파일';
+    if (p === 'content:') return '다른 앱(카톡·파일 앱)에서 넘겨받은 파일';
+    return '주소 형식 ' + p + (window.isSecureContext ? '' : ' · 보안 연결 아님');
+  }
+  function hardBlockReason() {
+    if (inClaude) return 'Claude 페이지 안에서는 기기 설정과 상관없이 실시간 카메라와 화면 공유가 막혀 있어요. 여기서는 사진 모드에서 촬영하거나, PC라면 화면 캡처(Win+Shift+S)를 Ctrl+V로 붙여넣으세요.';
+    if (location.protocol === 'content:' || (location.protocol === 'file:' && isMobile)) return '카톡이나 파일 앱에서 넘겨받은 파일(' + location.protocol + '// 주소)로 열려 있어요. 이런 주소는 크롬이 카메라를 허락해 줄 "사이트"가 없어서 항상 거절돼요. https 주소로 올려서 크롬에서 열어야 해요.';
+    if (framed) return '이 파일이 다른 앱의 미리보기 안에서 열려 있어요. 이 상태에서는 카메라가 막혀요. 크롬 주소창에 https 주소를 넣어 열어 주세요.';
+    if (!hasCamApi) return '지금 주소(' + location.protocol + ')는 보안 주소가 아니라서 브라우저가 카메라 기능을 꺼 뒀어요. PC 크롬에서 파일을 직접 열거나 https 주소로 열어 주세요.';
+    return '';
+  }
+  async function camPermState() { try { return (await navigator.permissions.query({ name: 'camera' })).state; } catch (e) { return 'unknown'; } }
+  async function cameraErrorText(e, want) {
+    const hard = hardBlockReason(); if (hard) return hard;
+    const n = e && e.name;
+    if (want === 'screen') {
+      if (!hasScreenApi) return '폰 브라우저는 화면 공유를 지원하지 않아요. PC 크롬에서 쓰거나 실시간 카메라 모드를 쓰세요.';
+      if (n === 'NotAllowedError') return '공유 창에서 취소됐어요. 다시 시작을 누르고 면접 창이나 탭을 고른 뒤 "공유"를 누르세요. 맥이라면 시스템 설정 → 개인정보 보호 및 보안 → 화면 기록에서 Chrome을 켜야 해요.';
+    }
+    if (n === 'NotAllowedError' || n === 'SecurityError') {
+      const st = await camPermState();
+      if (st === 'denied') return '이 사이트의 카메라가 차단돼 있어요. 크롬 주소창 왼쪽 아이콘 → 사이트 설정 → 카메라 → 허용으로 바꾸고 새로고침하세요.';
+      return '카메라 요청이 바로 거절됐어요. 크롬이 아닌 앱 화면 안에서 열렸을 때 이렇게 돼요. 크롬 앱에서 https 주소로 열어 주세요.';
+    }
+    if (n === 'NotFoundError' || n === 'OverconstrainedError') return '쓸 수 있는 카메라를 찾지 못했어요.';
+    if (n === 'NotReadableError' || n === 'AbortError') return '다른 앱이 카메라를 쓰고 있어요. 같은 기기에서 면접 화면이 웹캠을 쓰는 중이면, 이 페이지는 화면 공유 모드로 쓰세요.';
+    return '카메라를 켜지 못했어요 (' + ((e && (e.name || e.message)) || String(e)) + ').';
+  }
+  function setPermRow(node, s, text) { node.dataset.s = s; node.textContent = text; }
+  async function checkPerms() {
+    el.envText.textContent = envLabel();
+    const hard = hardBlockReason();
+    if (hard) { setPermRow(el.camText, 'off', '이 화면에선 쓸 수 없음'); el.camReq.hidden = true; el.permHint.textContent = hard; }
+    else {
+      el.camReq.hidden = false;
+      const st = await camPermState();
+      if (st === 'granted') { setPermRow(el.camText, 'ok', '허용됨'); el.permHint.textContent = '카메라는 허용돼 있어요. 실시간 카메라 모드에서 시작을 누르세요.'; }
+      else if (st === 'denied') { setPermRow(el.camText, 'off', '차단됨'); el.permHint.textContent = await cameraErrorText({ name: 'NotAllowedError' }, 'camera'); }
+      else { setPermRow(el.camText, 'wait', '아직 요청 안 함'); el.permHint.textContent = '"카메라 권한 요청"을 누르고 뜨는 창에서 허용을 누르세요.'; }
+    }
+    if (!inClaude) { el.claudeRow.hidden = true; return; }
+    el.claudeRow.hidden = false;
+    const perms = await window.claude.use('permissions').catch(() => null);
+    if (!sample || !perms) {
+      setPermRow(el.claudeText, engine === 'checking' ? 'wait' : 'off', engine === 'checking' ? '연결 확인 중' : '이 화면에선 쓸 수 없음');
+      el.claudeReq.hidden = true; el.claudeManage.hidden = true; return;
+    }
+    const st = await perms.state('sample').catch(() => 'unavailable');
+    setPermRow(el.claudeText, st === 'granted' ? 'ok' : st === 'prompt' ? 'wait' : 'off',
+      ({ granted: '허용됨', prompt: '아직 허용 안 함', denied: '거절됨', unavailable: '이 화면에선 쓸 수 없음' })[st] || st);
+    el.claudeReq.hidden = st !== 'prompt';
+    el.claudeManage.hidden = st !== 'denied';
+    if (st === 'denied') el.permHint.textContent = 'Claude 사용이 거절된 상태예요. "권한 설정 열기"를 눌러 Claude 사용을 켜 주세요.';
+  }
+  el.permPanel.addEventListener('toggle', () => { if (el.permPanel.open) checkPerms(); });
+  el.camReq.addEventListener('click', async () => {
+    try {
+      const s = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      s.getTracks().forEach(t => t.stop());
+      setPermRow(el.camText, 'ok', '허용됨');
+      el.permHint.textContent = '카메라가 허용됐어요. 설정을 닫고 시작을 누르세요.';
+      if (mode !== 'camera') setMode('camera');
+    } catch (e) {
+      setPermRow(el.camText, 'off', '거절됨 (' + ((e && e.name) || '오류') + ')');
+      el.permHint.textContent = await cameraErrorText(e, 'camera');
+    }
+  });
+  el.claudeReq.addEventListener('click', async () => {
+    const perms = await window.claude.use('permissions').catch(() => null);
+    if (!perms) { toast('이 화면에서는 권한을 요청할 수 없어요.'); return; }
+    const r = await perms.request(['sample']).catch(() => ({}));
+    await checkPerms();
+    if (r.sample === 'granted') toast('Claude 사용이 허용됐어요. 다시 찍어 보세요.');
+  });
+  el.claudeManage.addEventListener('click', async () => {
+    const perms = await window.claude.use('permissions').catch(() => null);
+    try { if (!perms) throw 0; await perms.manage(); await checkPerms(); }
+    catch (e) { toast('권한 창을 열지 못했어요. 페이지 메뉴의 권한(Permissions)에서 Claude 사용을 켜 주세요.'); }
+  });
+
+  /* ---------- live capture ---------- */
+  async function acquireWake() { try { if (navigator.wakeLock && live) wakeLock = await navigator.wakeLock.request('screen'); } catch (e) { wakeLock = null; } }
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && live) acquireWake(); });
+
+  async function startLive() {
+    if (!canRun(new Blob())) return;
+    const md = navigator.mediaDevices;
+    const want = mode;
+    try {
+      if (!hasCamApi || (want === 'screen' && !hasScreenApi)) throw { name: 'Unsupported' };
+      if (want === 'camera') stream = await md.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 3840 }, height: { ideal: 2160 } }, audio: false });
+      else stream = await md.getDisplayMedia({ video: { frameRate: 5 }, audio: false });
+    } catch (e) {
+      stream = null;
+      const msg = await cameraErrorText(e, want);
+      openSheet({ perm: true });
+      el.permHint.textContent = msg;
+      return;
+    }
+    const track = stream.getVideoTracks()[0] || null;
+    el.video.classList.toggle('contain', want === 'screen');
+    el.video.srcObject = stream; el.video.hidden = false; el.still.hidden = true; el.finderEmpty.hidden = true;
+    try { await el.video.play(); } catch (e) {}
+    if (track) track.addEventListener('ended', stopLive);
+    live = true; prev = null; ref = null; stable = 0; selecting = false; drag = null;
+    clearInterval(loopId); loopId = setInterval(tick, TICK_MS);
+    renderFab(); renderRoi();
+    setChip('watching', '화면 보는 중');
+    acquireWake();
+  }
+  function stopLive() {
+    live = false; clearInterval(loopId); loopId = 0; selecting = false; drag = null;
+    if (stream) stream.getTracks().forEach(t => t.stop());
+    stream = null;
+    el.video.srcObject = null; el.video.hidden = true;
+    el.meter.hidden = true;
+    if (wakeLock) { wakeLock.release().catch(() => {}); wakeLock = null; }
+    if (!busy) setChip('idle', '대기 중');
+    renderFab(); renderRoi(); renderFinderEmpty();
+  }
+  async function readNow() {
+    if (!live || !el.video.videoWidth) return;
+    ref = grabSmall();
+    let blob; try { blob = await grabFullBlob(); } catch (e) { return; }
+    run({ blob, fresh: true });
+  }
+
+  el.fab.addEventListener('click', (ev) => {
+    ev.stopPropagation();
+    if (mode === 'photo') el.shoot.click();
+    else if (live) stopLive();
+    else startLive();
+  });
+  el.albumBtn.addEventListener('click', (ev) => { ev.stopPropagation(); el.pick.click(); });
+  el.finder.addEventListener('click', (ev) => {
+    if (ev.target.closest('button')) return;
+    if (selecting || Date.now() - dragEndAt < 400) return;
+    if (live) readNow();
+    else if (mode === 'photo') el.shoot.click();
+    else startLive();
+  });
+
+  /* ---------- modes ---------- */
+  let mode = inClaude ? 'photo' : 'screen';
+  const NOTES = {
+    camera: inClaude
+      ? 'Claude 앱 안에서는 실시간 카메라가 막혀 있어요. 사진 모드를 쓰거나, 브라우저용 HTML 파일을 https 주소로 열어 주세요.'
+      : '폰을 고정하고 면접 화면의 질문이 잘 보이게 맞춰 주세요. 화면이 바뀌고 1초쯤 멈추면 자동으로 읽어요. 화면을 탭하면 바로 읽어요.',
+    screen: inClaude
+      ? 'Claude 앱 안에서는 화면 공유가 막혀 있어요. PC 크롬에서 브라우저용 HTML 파일을 열면 쓸 수 있어요.'
+      : 'PC 크롬에서 모의 면접 탭이나 창을 공유하세요. 질문이 바뀌면 자동으로 읽어요. 내 얼굴 영상 때문에 자꾸 다시 읽으면 "질문 영역 지정"으로 질문 부분만 감싸세요.',
+    photo: '질문이 뜨면 화면을 찍으세요. PC에서는 화면 캡처(Win+Shift+S) 후 이 페이지에서 Ctrl+V로 붙여넣어도 돼요. 질문을 직접 입력해도 돼요.'
+  };
+  function renderFab() {
+    el.fab.classList.toggle('stop', live);
+    el.fab.textContent = mode === 'photo' ? '촬영' : (live ? '정지' : '시작');
+    el.albumBtn.hidden = mode !== 'photo';
+  }
+  function renderFinderEmpty() {
+    if (live) return;
+    const hasStill = !!stillUrl && mode === 'photo';
+    el.still.hidden = !hasStill; el.finderEmpty.hidden = hasStill;
+    if (mode === 'photo') { el.emptyTitle.textContent = '눌러서 질문 화면을 찍어 주세요'; el.emptySub.textContent = '찍거나 캡처를 붙여넣으면 아래에 스크립트가 떠요'; }
+    else if (mode === 'camera') { el.emptyTitle.textContent = '시작을 누르면 카메라가 켜져요'; el.emptySub.textContent = '질문이 바뀔 때마다 자동으로 읽어요. 화면을 탭하면 바로 읽어요.'; }
+    else { el.emptyTitle.textContent = '시작을 누르고 면접 창을 고르세요'; el.emptySub.textContent = '공유한 화면에서 질문이 바뀔 때마다 자동으로 읽어요'; }
+  }
+  function setMode(m) {
+    if (live && m !== mode) stopLive();
+    mode = m;
+    el.modes.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.mode === m)));
+    el.modeNote.textContent = NOTES[m];
+    el.modeNote.classList.toggle('warn', inClaude && m !== 'photo');
+    el.ask.hidden = m !== 'photo';
+    el.sensField.hidden = m === 'photo';
+    renderFab(); renderFinderEmpty(); renderRoi();
+  }
+  el.modes.addEventListener('click', (ev) => { const b = ev.target.closest('button[data-mode]'); if (b) setMode(b.dataset.mode); });
+
+  /* ---------- sheets ---------- */
+  function openSheet({ perm = false, key = false } = {}) {
+    el.presets.hidden = true;
+    el.sheet.hidden = false;
+    if (perm) { el.permPanel.open = true; checkPerms(); setTimeout(() => { try { el.permPanel.scrollIntoView({ block: 'start' }); } catch (e) {} }, 60); }
+    if (key && engine === 'api') setTimeout(() => el.apiKey.focus(), 60);
+  }
+  function closeSheet() { el.sheet.hidden = true; }
+  function openPresets() { el.sheet.hidden = true; renderPresetSheet(); el.presets.hidden = false; }
+  function closePresets() { el.presets.hidden = true; }
+  el.openSheet.addEventListener('click', () => openSheet());
+  el.closeSheet.addEventListener('click', closeSheet);
+  el.sheet.addEventListener('click', (ev) => { if (ev.target === el.sheet) closeSheet(); });
+  el.openPresets.addEventListener('click', openPresets);
+  el.closePresets.addEventListener('click', closePresets);
+  el.presets.addEventListener('click', (ev) => { if (ev.target === el.presets) closePresets(); });
+  document.addEventListener('keydown', (ev) => {
+    if (ev.key !== 'Escape') return;
+    if (!el.viewer.hidden) el.viewer.hidden = true;
+    else if (!el.sheet.hidden) closeSheet();
+    else if (!el.presets.hidden) closePresets();
+  });
+  el.clearBtn.addEventListener('click', () => {
+    [...hist].forEach(e => { if (e.ctl) e.ctl.abort(); if (e.url) URL.revokeObjectURL(e.url); });
+    hist.length = 0; viewIdx = 0; runNo = 0; lastQ = ''; render(); toast('스크립트 기록을 비웠어요');
+  });
+
+  setMode(mode);
+  renderEngine();
+  render();
+  initEngine();
+  initDb();
+
+  // exposed for a quick self-test only
+  window.__iscr = { parse, estSecs, localMatch, buildPrompt, sanitize };
+})();
+</script>
+
+</html>
